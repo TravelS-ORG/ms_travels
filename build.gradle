@@ -1,7 +1,11 @@
+import java.time.Duration
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.avast.gradle.docker-compose' version '0.17.10'
+	id 'org.flywaydb.flyway' version '10.15.2'
 }
 
 group = 'com.group'
@@ -63,11 +67,45 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
-//tasks.withTypes(JavaCompile).configureEach {
-//	options.compilerArgs.add("-parameters")
-//	options.compilerArgs.add("-Amapstruct.unmappedTargetPolicy=IGNORE")
-//}
+flyway {
+	url = 'jdbc:postgresql://localhost:5432/travels'
+	user = 'travels-user'
+	password = 'travels-password'
+	schemas = ['public']
+	locations = ['filesystem:src/main/resources/db/migration']
+}
 
-tasks.named('test') {
-	useJUnitPlatform()
+dockerCompose {
+	useComposeFiles = ['src/main/docker/compose/docker-compose.yml']
+	stopContainers = true
+	removeContainers = true
+	waitForTcpPorts = true
+	waitForTcpPortsTimeout = Duration.ofMinutes(2)
+}
+
+tasks.register('startTestEnv') {
+	group = 'environment'
+	description = 'Start local dev environment (Exported by docker compose)'
+	dependsOn tasks.composeUp
+}
+
+tasks.register('stopTestEnv') {
+	group = 'environment'
+	description = 'Stop dev environment'
+	dependsOn tasks.composeDown
+}
+
+tasks.register('resetTestEnv') {
+	group = 'environment'
+	description = 'Kill and recreate local dev env'
+	dependsOn tasks.composeDown
+	finalizedBy tasks.composeUp
+}
+
+bootRun {
+	args = ['--spring.profiles.active=local']
+}
+
+tasks.named('bootRun') {
+	dependsOn tasks.named('startTestEnv')
 }
