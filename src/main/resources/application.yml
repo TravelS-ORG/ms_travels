@@ -1,0 +1,74 @@
+server:
+  port: 8090
+  servlet:
+    context-path: /ms_travels
+
+spring:
+  profile:
+    active: local
+  application:
+    name: ms_travels
+
+  datasource:
+    master:
+      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:travels}
+      username: ${DB_USERNAME:travels_user}
+      password: ${DB_PASSWORD:travels_pass}}
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        pool-name: MasterJPAHikariCP
+        schema: travels-data
+        minimum-idle: 2
+        maximum-pool-size: 20
+        idle-timeout: 30000
+        max-timeline: 1800000
+        connection-timeout: 30000
+    read-replica:
+      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:travels}
+      username: { DB_RO_USERNAME:travels_user }
+      password: { DB_RO_PASSWORD:travels_pass }
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        pool-name: ReadReplicaJPAHikariCP
+        schema: travels-data
+        minimum-idle: 2
+        maximum-pool-size: 10
+        idle-timeout: 30000
+        read-only: true
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+      show-sql: false
+    flyway:
+      enabled: true
+      locations: db/migration/base
+      fail-on-missing-locations: false
+      out-of-order: true
+      ignore-migration-patterns: "*:missing"
+    data:
+      redis:
+        host: ${REDIS_HOST:localhost}
+        port: ${REDIS_PORT:6379}
+        password: ${REDIS_PASSWORD:}
+
+  jwt:
+    secret: ${JWT_SECRET:...}
+    access-token-expiry: 300000
+    refresh-token-expiry: 604800000
+
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,info
+
+
+
+
+
+
+
