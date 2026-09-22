@@ -1,34 +1,12 @@
-services:
+name: ms_travels
 
-  postgres-db:
-    image: postgres:16-alpine
-    container_name: postgres
-    environment:
-      POSTGRES_DB: travels
-      POSTGRES_USER: travels-user
-      POSTGRES_PASSWORD: travels-password
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./dbscripts:/docker-entrypoint-initdb.d
-      - travels-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U travels-user -d travels"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7.2-alpine
-    container_name: travels-redis
-    ports:
-      - "6379:6379"
-    command: ["redis-server", "--requirepass", "travels-redis-pass"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "travels-redis-pass", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+networks:
+  backend:
+    driver: bridge
 
 volumes:
-  travels-pgdata: {}
+  travels-pgdata:
+  travels-master-data:
+  travels-replica-data:
+  travels-redis-data:
+  travels-keycloak-db-data:

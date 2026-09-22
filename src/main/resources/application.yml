@@ -6,35 +6,19 @@ server:
 spring:
   profile:
     active: local
+
   application:
     name: ms_travels
 
-  datasource:
-    master:
-      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:travels}
-      username: ${DB_USERNAME:travels_user}
-      password: ${DB_PASSWORD:travels_pass}}
-      driver-class-name: org.postgresql.Driver
-      hikari:
-        pool-name: MasterJPAHikariCP
-        schema: travels-data
-        minimum-idle: 2
-        maximum-pool-size: 20
-        idle-timeout: 30000
-        max-timeline: 1800000
-        connection-timeout: 30000
-    read-replica:
-      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:travels}
-      username: { DB_RO_USERNAME:travels_user }
-      password: { DB_RO_PASSWORD:travels_pass }
-      driver-class-name: org.postgresql.Driver
-      hikari:
-        pool-name: ReadReplicaJPAHikariCP
-        schema: travels-data
-        minimum-idle: 2
-        maximum-pool-size: 10
-        idle-timeout: 30000
-        read-only: true
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,info
+
+  docker:
+    compose:
+      enabled: false
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -43,32 +27,68 @@ spring:
       naming:
         physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
       show-sql: false
-    flyway:
-      enabled: true
-      locations: db/migration/base
-      fail-on-missing-locations: false
-      out-of-order: true
-      ignore-migration-patterns: "*:missing"
-    data:
-      redis:
-        host: ${REDIS_HOST:localhost}
-        port: ${REDIS_PORT:6379}
-        password: ${REDIS_PASSWORD:}
 
-  jwt:
-    secret: ${JWT_SECRET:...}
-    access-token-expiry: 300000
-    refresh-token-expiry: 604800000
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    fail-on-missing-locations: false
+    out-of-order: true
+    ignore-migration-patterns: "*:missing"
 
-  management:
-    endpoints:
-      web:
-        exposure:
-          include: health,info
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  datasource:
+    master:
+      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:travels}
+      username: ${DB_USERNAME:travels-user}
+      password: ${DB_PASSWORD:travels-password}
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        pool-name: MasterJPAHikariCP
+        schema: travels_data
+        minimum-idle: 5
+        maximum-pool-size: 20
+        idle-timeout: 30000
+        max-lifetime: 1800000
+        connection-timeout: 30000
+    replica:
+      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_RO_PORT:5432}/${DB_NAME:travels}
+      username: ${DB_RO_USERNAME:travels-ro-user}
+      password: ${DB_RO_PASSWORD:travels-ro-pass}
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        pool-name: ReadReplicaJPAHikariCP
+        schema: travels_data
+        minimum-idle: 5
+        maximum-pool-size: 10
+        idle-timeout: 30000
+        max-lifetime: 1800000
+        connection-timeout: 30000
+        read-only: true
+
+  # user-issuer: http://localhost:8081/realms/travels
+  # Getch keycloak endpoint when starting up
+  # Getting JWKS URI from its session
+  # Cache JWKS in memory (auto refresh)
+  # Verify JWT automatically for every request having Authorization: Bearer <jwt>
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          issuer-uri: ${KEYCLOAK_ISSUER:http://localhost:8081/realms/travels}
+#          audience: ${KEYCLOAK_AUDIENCE:travels}
 
 
-
-
+#travels:
+#  auth:
+#    tenant-id-claim: tenant_id
+#    tenant-code-claim: tenant_code
+#    roles-claim-path: realm_access.roles
+#    user-projection-sync-ttl: 300 #unit: second
 
 
 
