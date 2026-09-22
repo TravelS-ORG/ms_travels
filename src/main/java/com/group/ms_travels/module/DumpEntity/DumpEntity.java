@@ -2,8 +2,12 @@ package com.group.ms_travels.module.DumpEntity;
 
 import com.group.ms_travels.core.audit.BaseEntity;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
+@Getter
+@Setter
 @Table(name = "dump_table")
 public class DumpEntity extends BaseEntity {
     @Id
@@ -11,11 +15,12 @@ public class DumpEntity extends BaseEntity {
     @Column(nullable = false)
     private Long id;
 
-    public Long getId() {
-        return id;
-    }
+    @Column(name = "value")
+    private String value;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    @Column(name = "number")
+    private int number;
+
+    @Column(name = "isTrue")
+    private boolean isTrue;
 }

@@ -1,0 +1,18 @@
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-travels}
+      POSTGRES_USER: ${DB_USERNAME:-travels-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-travels-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - travels-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-travels-user} -d ${DB_NAME:-travels}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend

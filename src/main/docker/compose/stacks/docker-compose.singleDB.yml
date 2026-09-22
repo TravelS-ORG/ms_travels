@@ -1,0 +1,9 @@
+services:
+  postgres-db:
+    extends:
+      file: ./src/main/docker/compose/components/docker-compose.postgres.yml
+      service: postgres-db
+  redis:
+    extends:
+      file: ./src/main/docker/compose/components/docker-compose.redis.yml
+      service: redis
