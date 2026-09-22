@@ -2,20 +2,20 @@ spring:
   datasource:
     master:
       url: jdbc:postgresql://localhost:5432/travels
-      username: travels_user
-      password: travels_pass
+      username: travels-user
+      password: travels-password
       hikari:
-        schema: travels-data
+        schema: travels_data
         minimum-idle: 2
         maximum-pool-size: 20
-    read-replica:
+    replica:
       url: jdbc:postgresql://localhost:5432/travels
       username: travels_ro_user
       password: travels_ro_pass
       driver-class-name: org.postgresql.Driver
       hikari:
         pool-name: ReadReplicaJPAHikariCP
-        schema: travels-data
+        schema: travels_data
         minimum-idle: 2
         maximum-pool-size: 10
         idle-timeout: 30000
@@ -23,16 +23,14 @@ spring:
 
   jpa:
     show-sql: true
-    flyway:
-      baseline-on-migrate: true
     data:
       redis:
         host: localhost
         port: 6379
         password: travels-redis-pass
 
-  jwt:
-    secret: 396930b5dc1a44296318f6c21e2c4461b698c220b29ebfd4fe733f09cbe10820
+  flyway:
+    baseline-on-migrate: true
 
   management:
     endpoints:
@@ -43,6 +41,8 @@ spring:
   logging:
     level:
       org.hibernate.SQL: DEBUG
-
+      com.zaxxer.hikari: INFO
+      com.zaxxer.hikari.HikariConfig: DEBUG
+      com.group.ms_travels.core.aop.: DEBUG
 
 

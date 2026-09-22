@@ -1,0 +1,13 @@
+services:
+  postgres-master:
+    extends:
+      file: ./src/main/docker/compose/components/docker-compose.replica.yml
+      service: postgres-master
+  postgres-replica:
+    extends:
+      file: ./src/main/docker/compose/components/docker-compose.replica.yml
+      service: postgres-replica
+  redis:
+    extends:
+      file: ./src/main/docker/compose/components/docker-compose.redis.yml
+      service: redis

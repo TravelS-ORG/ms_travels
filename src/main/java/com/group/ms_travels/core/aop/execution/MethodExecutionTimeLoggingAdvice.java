@@ -1,4 +1,4 @@
-package com.group.ms_travels.core.aop;
+package com.group.ms_travels.core.aop.execution;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.StopWatch;
