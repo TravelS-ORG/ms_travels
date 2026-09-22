@@ -1,0 +1,51 @@
+#  keycloak-db:
+##    image: postgres:16-alpine
+##    container_name: travels-keycloak-db
+##    environment:
+##      POSTGRES_DB: keycloak
+##      POSTGRES_USER: keycloak-user
+##      POSTGRES_PASSWORD: keycloak-password
+##    ports:
+##      - "5433:5432"
+##    volumes:
+##      - ./dbscripts:/docker-entrypoint-initdb.d
+##      - travels-keycloak-db-data:/var/lib/postgresql/data
+##    healthcheck:
+##      test: ["CMD-SHELL", "pg_isready -U keycloak-user -d keycloak"]
+##      interval: 5s
+##      timeout: 5s
+##      retries: 5
+
+#  keycloak:
+#    image: quay.io/keycloak/keycloak:26.0
+#    container_name: travels-keycloak
+#    environment:
+#      # BOOTSTRAP ADMIN
+#      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+#      KC_BOOTSTRAP_ADMIN_PASSWORD: admin_dev_pass
+#      # DB
+
+
+#      KC_DB: postgres
+#      KC_DB_URL_HOST: jdbc:postgresql://travels-keycloak-db:5432/keycloak
+#      KC_DB_URL_DATABASE: keycloak
+#      KC_DB_USERNAME: keycloak-user
+#      KC_DB_PASSWORD: keycloak-pass
+#      # HTTP DEV only
+#      KC_HOSTNAME: localhost
+#      KC_HOSTNAME_STRICT: "false"
+#      KC_HTTP_ENABLED: "true"
+#      # Import realm
+#      KC_IMPORT_REALM: "true"
+#    ports:
+#      - "8080:8080"
+#    depends_on:
+#      keycloak-db:
+#        condition: service_healthy
+#    restart: unless-stopped
+#    command: start-dev --import-realm
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:8080/health/KCDB/ready"]
+#      interval: 5s
+#      timeout: 5s
+#      retries: 10

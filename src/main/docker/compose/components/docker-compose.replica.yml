@@ -1,0 +1,61 @@
+services:
+  postgres-master:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-travels}
+      POSTGRES_USER: ${DB_USERNAME:-travels-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-travels-password}
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256\nhost replication all all scram-sha-256"
+    command: >
+      postgres
+        -c wal_level=replica
+        -c max_wal_senders=5
+        -c max_replication_slots=5
+        -c hot_standby=on
+        -c listen_addresses=*
+    ports:
+      - "5432:5432"
+    volumes:
+      - travels-master-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-travels-user} -d ${DB_NAME:-travels}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  postgres-replica:
+    image: postgres:16-alpine
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-travels-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-travels-password}
+    ports:
+      - "5433:5432"
+    entrypoint:
+      - bash
+      - -c
+      - |
+        if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+          rm -rf /var/lib/postgresql/data/*
+          PGPASSWORD=${DB_PASSWORD:-travels-password} pg_basebackup \
+            -h postgres-master \
+            -U ${DB_USERNAME:-travels-user} \
+            -D /var/lib/postgresql/data \
+            -R -P -X stream -C -S replica_slot_1
+          chown -R postgres:postgres /var/lib/postgresql/data
+          chmod 700 /var/lib/postgresql/data
+        fi
+        exec docker-entrypoint.sh postgres -c hot_standby=on
+    volumes:
+      - travels-replica-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-travels-user} -d ${DB_NAME:-travels}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend

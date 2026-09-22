@@ -1,0 +1,15 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-travels-redis-pass}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - travels-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-travels-redis-pass}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
