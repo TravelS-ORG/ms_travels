@@ -1,11 +1,7 @@
-import java.time.Duration
-
-
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
-	id 'com.avast.gradle.docker-compose' version '0.17.10'
 	id 'org.flywaydb.flyway' version '10.15.2'
 }
 
@@ -23,7 +19,6 @@ repositories {
 }
 
 dependencies {
-	// Default created by template
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
@@ -36,7 +31,6 @@ dependencies {
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
 
-	// External deps (importing by anh em dev)
 	implementation 'org.slf4j:slf4j-api:2.0.9'
 	implementation 'org.springframework.boot:spring-boot-starter-aop:3.5.16'
 	implementation 'org.springframework.boot:spring-boot-starter-validation:4.1.1'
@@ -48,9 +42,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator:3.5.4'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server:3.5.16'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client:3.5.16'
-//	implementation 'com.bucket4j:bucket4j-core:8.10.1'
-//	implementation 'com.bucket4j;bucket4j-redis:8.10.1'
-//	implementation 'io.github.resilience4j:resilience4j-spring-boot:3.2.0'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -58,6 +49,7 @@ dependencies {
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-batch-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-rest-test'
@@ -72,61 +64,163 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
-def envMode = (project.findProperty("envMode") ?: "single").toString()
-
-def composeBase = "src/main/docker/compose/docker-compose.yml"
-def composeRedis = "src/main/docker/compose/components/docker-compose.redis.yml"
-def composePostgresSingle = "src/main/docker/compose/components/docker-compose.postgres.yml"
-def composePostgresReplica = "src/main/docker/compose/components/docker-compose.replica.yml"
-def composeKeycloak = "src/main/docker/compose/components/docker-compose.keycloak.yml"
-
-dockerCompose {
-        useComposeFiles = [composeBase, composeRedis, composePostgresSingle]
-        stopContainers = true
-        removeContainers = true
-        waitForTcpPorts = true
-        waitForTcpPortsTimeout = Duration.ofMinutes(2)
+flyway {
+	url = 'jdbc:postgresql://localhost:5432/travels'
+	user = 'travels-user'
+	password = 'travels-password'
+	schemas = ['public']
+	locations = ['filesystem:src/main/resources/db/migration']
 }
 
-tasks.named("composeUp").configure {
-        doFirst {
-                dockerCompose.useComposeFiles = (envMode == "multiple")
-                        ? [composeBase, composeRedis, composePostgresReplica]
-                        : [composeBase, composeRedis, composePostgresSingle]
-        }
+
+// ============================================================================
+// Docker Compose
+// ============================================================================
+def dockerExecutable = 'docker'
+
+def composeBase = file('src/main/docker/compose/docker-compose.yml').absolutePath
+def composeRedis = file('src/main/docker/compose/components/docker-compose.redis.yml').absolutePath
+def composePostgresSingle = file('src/main/docker/compose/components/docker-compose.postgres.yml').absolutePath
+def composePostgresReplica = file('src/main/docker/compose/components/docker-compose.replica.yml').absolutePath
+
+def envMode = (project.findProperty('envMode') ?: 'single').toString()
+
+if (!['single', 'multiple'].contains(envMode)) {
+	throw new GradleException(
+			"Invalid envMode '${envMode}'. Expected 'single' or 'multiple'."
+	)
 }
 
-tasks.named("composeDown").configure {
-        doFirst {
-                dockerCompose.useComposeFiles = (envMode == "multiple")
-                        ? [composeBase, composeRedis, composePostgresReplica]
-                        : [composeBase, composeRedis, composePostgresSingle]
-        }
+def selectedComposeFiles = envMode == 'multiple'
+		? [composeBase, composeRedis, composePostgresReplica]
+		: [composeBase, composeRedis, composePostgresSingle]
+
+
+def composeArgs = { List<String> files, List<String> command ->
+	def args = ['compose']
+
+	files.each { file ->
+		args.addAll(['-f', file])
+	}
+
+	args.addAll(command)
+	args
 }
 
-tasks.register('startTestEnv') {
-        group = 'environment'
-        description = 'Start local dev environment (single|multiple)'
-        dependsOn 'composeUp'
+
+// ============================================================================
+// Low-level Compose Tasks
+// ============================================================================
+def composeUpTask = tasks.register('composeUp', Exec) {
+	group = 'environment'
+	description = "Start Docker Compose environment in '${envMode}' mode"
+
+	executable = dockerExecutable
+	args composeArgs(
+			selectedComposeFiles,
+			[
+					'up',
+					'-d',
+					'--build',
+					'--remove-orphans',
+					'--wait',
+					'--wait-timeout', '120'
+			]
+	)
+}
+
+
+def registerComposeDown = { String taskName, List<String> composeFiles ->
+
+	tasks.register(taskName, Exec) {
+		group = 'environment'
+
+		executable = dockerExecutable
+		args composeArgs(
+				composeFiles,
+				[
+						'down',
+						'-v',
+						'--remove-orphans'
+				]
+		)
+
+		ignoreExitValue = true
+	}
+}
+
+
+def composeDownSingleTask = registerComposeDown(
+		'composeDownSingle',
+		[
+				composeBase,
+				composeRedis,
+				composePostgresSingle
+		]
+)
+
+def composeDownReplicaTask = registerComposeDown(
+		'composeDownReplica',
+		[
+				composeBase,
+				composeRedis,
+				composePostgresReplica
+		]
+)
+
+composeDownReplicaTask.configure {
+	mustRunAfter composeDownSingleTask
+}
+
+composeUpTask.configure {
+	mustRunAfter composeDownSingleTask, composeDownReplicaTask
+}
+
+
+// ============================================================================
+// Environment Lifecycle Tasks
+// ============================================================================
+
+def startTestEnvTask = tasks.register('startTestEnv') {
+	group = 'environment'
+	description = "Clean previous environments and start '${envMode}' mode"
+
+	dependsOn(
+			composeDownSingleTask,
+			composeDownReplicaTask,
+			composeUpTask
+	)
 }
 
 tasks.register('stopTestEnv') {
-        group = 'environment'
-        description = 'Stop local dev environment (single|multiple)'
-        dependsOn 'composeDown'
+	group = 'environment'
+	description = 'Stop all local test environments'
+
+	dependsOn(
+			composeDownSingleTask,
+			composeDownReplicaTask
+	)
 }
 
+
 tasks.register('resetTestEnv') {
-        group = 'environment'
-        description = 'Recreate local dev environment (single|multiple)'
-        dependsOn 'composeDown'
-        finalizedBy 'composeUp'
+	group = 'environment'
+	description = "Recreate local environment in '${envMode}' mode"
+
+	// startTestEnv already:
+	// down single -> down replica -> up selected mode
+	dependsOn startTestEnvTask
 }
+
+
+// ============================================================================
+// Spring Boot
+// ============================================================================
 
 bootRun {
 	args = ['--spring.profiles.active=local']
 }
 
 tasks.named('bootRun') {
-	dependsOn tasks.named('startTestEnv')
+	dependsOn startTestEnvTask
 }
